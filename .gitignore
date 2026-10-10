@@ -1,0 +1,9 @@
+/.vs
+
+# Node / Capacitor
+node_modules/
+# Gerado por `npm run vendor` a partir de node_modules
+www/vendor/
+
+# APKs copiados para distribuir
+dist/

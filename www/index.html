@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Define o tema ANTES do CSS para evitar flash de layout incorreto -->
+  <script>
+    (function(){
+      try{document.documentElement.setAttribute("data-theme",localStorage.getItem("ch_theme")==="light"?"light":"dark");}catch(e){}
+    })();
+  </script>
+  <title>Chaveiro Marcelo</title>
+  <link href="vendor/bootstrap/bootstrap.min.css" rel="stylesheet" />
+  <link href="vendor/bootstrap-icons/bootstrap-icons.min.css" rel="stylesheet" />
+  <style>
+    /*
+      Tema escuro definido em :root como padrão absoluto.
+      O tema claro apenas sobrescreve via [data-theme="light"].
+      --bar: cor das barras do gráfico, validada por tema (contraste >= 3:1 com o card).
+    */
+    :root {
+      --accent:#14b8a6; --accent-hover:#0d9488; --danger:#ef4444;
+      color-scheme:dark;
+      --bg:#0a0e11; --bg-sidebar:#0d1317; --bg-card:#12191e; --bg-card-hover:#16212a;
+      --bg-input:#0f171d; --border:#1e2a33; --text:#e6edf3; --text-muted:#7d8b98;
+      --text-dim:#56636e; --topbar:#0a0e11; --row-hover:#16212a;
+      --bar:#11a394; --bar-hover:#14b8a6; --grid:#1e2a33;
+    }
+    [data-theme="light"] {
+      color-scheme:light;
+      --bg:#f1f5f9; --bg-sidebar:#ffffff; --bg-card:#ffffff; --bg-card-hover:#f8fafc;
+      --bg-input:#ffffff; --border:#e2e8f0; --text:#1e293b; --text-muted:#64748b;
+      --text-dim:#94a3b8; --topbar:#ffffff; --row-hover:#f8fafc;
+      --bar:#0d9488; --bar-hover:#0f766e; --grid:#e2e8f0;
+    }
+
+    *{box-sizing:border-box;}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;transition:background .25s,color .25s;}
+
+    .app{display:flex;min-height:100vh;}
+
+    /* Sidebar */
+    .sidebar{width:250px;flex-shrink:0;background:var(--bg-sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px 0;position:sticky;top:0;height:100vh;transition:background .25s,transform .25s;overflow-y:auto;}
+    .brand{display:flex;align-items:center;gap:12px;padding:4px 22px 22px;border-bottom:1px solid var(--border);margin-bottom:16px;}
+    .brand .logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#0891b2);display:grid;place-items:center;color:#fff;font-size:20px;flex-shrink:0;}
+    .brand-title{font-weight:700;font-size:17px;line-height:1.1;}
+    .brand-title span{color:var(--accent);}
+    .brand-sub{font-size:11px;color:var(--text-muted);letter-spacing:1px;}
+    .nav-section{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-dim);padding:16px 22px 8px;font-weight:600;}
+    .nav-item{display:flex;align-items:center;gap:13px;padding:11px 22px;color:var(--text-muted);cursor:pointer;font-size:14.5px;border-left:3px solid transparent;transition:all .15s;user-select:none;}
+    .nav-item i{font-size:17px;}
+    .nav-item:hover{background:var(--bg-card-hover);color:var(--text);}
+    .nav-item.active{background:var(--bg-card);color:var(--text);border-left-color:var(--accent);font-weight:600;}
+    .nav-item.active i{color:var(--accent);}
+    .sidebar-footer{margin-top:auto;padding:16px 22px 4px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+    .avatar{width:38px;height:38px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700;flex-shrink:0;font-size:15px;}
+    .sidebar-footer .info{line-height:1.2;flex:1;min-width:0;overflow:hidden;}
+    .sidebar-footer .info b{font-size:14px;}
+    .sidebar-footer .info small{color:var(--text-dim);font-size:10px;letter-spacing:.5px;}
+
+    /* Main */
+    .main{flex:1;display:flex;flex-direction:column;min-width:0;}
+    .topbar{height:66px;background:var(--topbar);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 26px;position:sticky;top:0;z-index:20;transition:background .25s;}
+    .topbar h1{font-size:20px;margin:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .topbar .sub{font-size:12.5px;color:var(--text-muted);margin:0;}
+    .topbar-actions{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+    .icon-btn{width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text-muted);display:grid;place-items:center;cursor:pointer;font-size:17px;transition:all .15s;}
+    .icon-btn:hover{color:var(--text);border-color:var(--accent);}
+    .menu-toggle{display:none;}
+    .content{padding:26px;}
+
+    /* Panels */
+    .panel{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:22px;}
+    .panel-title{font-size:16px;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:9px;}
+    .panel-title i{color:var(--accent);}
+    .panel-sub{font-size:12.5px;color:var(--text-muted);margin:0;}
+
+    /* Dashboard system cards */
+    .system-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:24px;cursor:pointer;transition:all .18s;height:100%;}
+    .system-card:hover{background:var(--bg-card-hover);border-color:var(--accent);transform:translateY(-2px);}
+    .sc-ic{width:46px;height:46px;border-radius:11px;background:rgba(20,184,166,.12);color:var(--accent);display:grid;place-items:center;font-size:22px;margin-bottom:16px;}
+    .system-card h5{font-weight:700;margin:0 0 6px;}
+    .system-card p{font-size:13px;color:var(--text-muted);margin:0 0 18px;}
+    .system-card .go{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:600;color:var(--text-muted);border-top:1px solid var(--border);padding-top:14px;}
+
+    /* Inputs */
+    .form-control,.form-select{background:var(--bg-input)!important;border:1px solid var(--border)!important;color:var(--text)!important;border-radius:9px;}
+    .form-control:focus,.form-select:focus{border-color:var(--accent)!important;box-shadow:0 0 0 .2rem rgba(20,184,166,.18)!important;}
+    .form-control::placeholder{color:var(--text-dim)!important;}
+    label.form-label{font-size:13px;color:var(--text-muted);font-weight:600;margin-bottom:6px;}
+    .money-input{font-size:22px;font-weight:700;}
+
+    /* Buttons */
+    .btn-accent{background:var(--accent);border:none;color:#fff;font-weight:600;border-radius:9px;padding:10px 20px;transition:background .15s;cursor:pointer;}
+    .btn-accent:hover{background:var(--accent-hover);color:#fff;}
+    .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:9px;padding:10px 18px;font-weight:600;cursor:pointer;}
+    .btn-ghost:hover{color:var(--text);border-color:var(--accent);}
+    .btn-cta{width:100%;padding:16px 20px;font-size:16px;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:10px;}
+
+    /* Tables */
+    .table-wrap{border:1px solid var(--border);border-radius:12px;overflow:hidden;overflow-x:auto;}
+    table.grid{width:100%;border-collapse:collapse;min-width:480px;}
+    table.grid thead th{background:var(--bg-input);color:var(--text-dim);font-size:11.5px;letter-spacing:.8px;text-transform:uppercase;font-weight:600;padding:12px 16px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;}
+    table.grid tbody td{padding:13px 16px;font-size:14px;border-bottom:1px solid var(--border);color:var(--text);}
+    table.grid tbody tr:last-child td{border-bottom:none;}
+    table.grid tbody tr:hover{background:var(--row-hover);}
+    table.grid .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+    table.grid tr.day-row td{background:var(--bg-input);font-size:12.5px;font-weight:700;color:var(--text-muted);padding:9px 16px;}
+    table.grid tr.day-row:hover{background:transparent;}
+    table.grid tr.click-row{cursor:pointer;}
+    table.grid.fit{min-width:0;}
+    .svc-pag{display:block;margin-top:5px;}
+    .empty{text-align:center;padding:40px 16px;color:var(--text-dim);font-size:14px;}
+    .empty i{font-size:34px;display:block;margin-bottom:10px;opacity:.5;}
+
+    /* Badges */
+    .badge-soft{padding:3px 11px;border-radius:20px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:4px;}
+    .badge-count{background:rgba(20,184,166,.14);color:var(--accent);}
+    .badge-pag{background:var(--bg-input);border:1px solid var(--border);color:var(--text-muted);}
+
+    /* Action buttons */
+    .btn-act{background:transparent;border:1px solid transparent;border-radius:8px;width:34px;height:34px;cursor:pointer;font-size:14px;transition:all .15s;color:var(--text-dim);}
+    .btn-act:hover{border-color:var(--border);color:var(--text);}
+    .btn-act.del:hover{color:var(--danger);border-color:var(--danger);background:rgba(239,68,68,.08);}
+    .btn-act.edit:hover{color:var(--accent);border-color:var(--accent);background:rgba(20,184,166,.08);}
+
+    /* Stat cards */
+    .stat{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:20px;height:100%;}
+    .stat .n{font-size:26px;font-weight:700;line-height:1.1;margin-bottom:4px;font-variant-numeric:tabular-nums;word-break:break-word;}
+    .stat .l{font-size:13px;color:var(--text-muted);}
+    .stat .s{font-size:12px;color:var(--text-dim);margin-top:2px;}
+
+    /* Toggle (forma de pagamento) */
+    .tipo-toggle{display:flex;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:4px;gap:4px;}
+    .tipo-toggle input[type="radio"]{display:none;}
+    .tipo-toggle label{flex:1;text-align:center;padding:9px 6px;border-radius:7px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text-muted);transition:all .15s;}
+    .tipo-toggle input[type="radio"]:checked+label{background:var(--accent);color:#fff;}
+
+    /* Seletor de período (‹ mês ano ›): sempre numa linha só */
+    .period{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;min-width:0;}
+    .period .icon-btn{flex-shrink:0;}
+    .period .form-select{width:auto;min-width:0;}
+    .period .sel-mes{flex:1 1 140px;max-width:180px;}
+    .period .sel-ano{flex:0 1 96px;}
+    .period-bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+    .period-actions{display:flex;gap:8px;flex-wrap:wrap;}
+
+    /* Gráfico anual */
+    .chart-box{position:relative;width:100%;}
+    .chart-box svg{display:block;width:100%;height:auto;overflow:visible;}
+    .chart-box .tick{fill:var(--text-dim);font-size:11px;}
+    .chart-box .xlab{fill:var(--text-muted);font-size:11.5px;}
+    .chart-box .xlab.cur{fill:var(--text);font-weight:700;}
+    .chart-box .dlab{fill:var(--text);font-size:11.5px;font-weight:700;}
+    .chart-box .gridline{stroke:var(--grid);stroke-width:1;}
+    .chart-box .baseline{stroke:var(--text-dim);stroke-width:1;}
+    .chart-box .bar{fill:var(--bar);transition:fill .12s;}
+    .chart-box .col.hover .bar{fill:var(--bar-hover);}
+    .chart-box .hit{fill:transparent;cursor:pointer;}
+    .chart-tip{position:absolute;pointer-events:none;background:var(--bg-sidebar);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:12.5px;box-shadow:0 8px 24px rgba(0,0,0,.25);white-space:nowrap;display:none;z-index:5;}
+    .chart-tip b{display:block;font-size:15px;margin-top:2px;font-variant-numeric:tabular-nums;}
+    .chart-tip small{color:var(--text-muted);}
+
+    /* Modals */
+    .modal-content{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;color:var(--text);}
+    .modal-header{border-bottom:1px solid var(--border);padding:20px 22px 16px;}
+    .modal-header .modal-title{font-size:17px;font-weight:700;display:flex;align-items:center;gap:9px;}
+    .modal-header .modal-title i{color:var(--accent);}
+    .modal-header .btn-close{filter:invert(1);opacity:.5;}
+    [data-theme="light"] .modal-header .btn-close{filter:none;}
+    .modal-body{padding:22px;}
+    .modal-footer{border-top:1px solid var(--border);padding:16px 22px 20px;gap:8px;}
+    .modal-backdrop.show{opacity:.6;}
+
+    /* Inline alerts */
+    .a-warn{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444;border-radius:9px;padding:10px 14px;font-size:13px;}
+    .a-info{background:rgba(20,184,166,.1);border:1px solid rgba(20,184,166,.3);color:var(--accent);border-radius:9px;padding:10px 14px;font-size:13px;}
+
+    /* Danger zone */
+    .btn-danger-solid{background:var(--danger);border:none;color:#fff;font-weight:600;border-radius:9px;padding:10px 20px;transition:background .15s;cursor:pointer;opacity:.5;pointer-events:none;}
+    .btn-danger-solid.enabled{opacity:1;pointer-events:auto;}
+    .btn-danger-solid.enabled:hover{background:#dc2626;color:#fff;}
+    .danger-zone{border:1px solid rgba(239,68,68,.35);border-radius:14px;padding:22px;background:rgba(239,68,68,.05);}
+    .danger-zone .dz-title{font-size:15px;font-weight:700;color:#ef4444;display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+    .danger-zone .dz-sub{font-size:13px;color:var(--text-muted);margin-bottom:16px;}
+
+    /* Views */
+    .view{display:none;}
+    .view.active{display:block;animation:fadeIn .15s ease;}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+    /* Mobile backdrop */
+    .backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:30;}
+
+    @media(max-width:900px){
+      .sidebar{position:fixed;z-index:40;transform:translateX(-100%);box-shadow:4px 0 30px rgba(0,0,0,.4);}
+      .sidebar.open{transform:translateX(0);}
+      .menu-toggle{display:grid;}
+      .backdrop.show{display:block;}
+    }
+    @media(max-width:576px){
+      .content{padding:14px;}
+      .topbar{padding:0 14px;}
+      .panel{padding:16px;}
+      .stat{padding:16px;}
+      .stat .n{font-size:20px;}
+      table.grid thead th{padding:10px;}
+      table.grid tbody td{padding:11px 10px;font-size:13.5px;}
+      table.grid tr.day-row td{padding:8px 10px;}
+      .period-actions{width:100%;}
+      .period-actions .btn{flex:1;}
+    }
+    @media(max-width:420px){ .hide-xs{display:none;} }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="logo"><i class="bi bi-key-fill"></i></div>
+      <div>
+        <div class="brand-title"><span>Chaveiro</span></div>
+        <div class="brand-sub">CONTROLE DE GANHOS</div>
+      </div>
+    </div>
+    <div class="nav-section">Início</div>
+    <div class="nav-item active" data-view="dashboard"><i class="bi bi-grid-1x2"></i> Dashboard</div>
+    <div class="nav-section">Ganhos</div>
+    <div class="nav-item" data-view="mensal"><i class="bi bi-calendar3"></i> Lançamentos do Mês</div>
+    <div class="nav-item" data-view="anual"><i class="bi bi-bar-chart"></i> Relatório Anual</div>
+    <div class="nav-section">Dados</div>
+    <div class="nav-item" data-view="exportar"><i class="bi bi-file-earmark-arrow-down"></i> Exportar</div>
+    <div class="nav-item" data-view="importar"><i class="bi bi-file-earmark-arrow-up"></i> Importar</div>
+    <div class="nav-section">Segurança</div>
+    <div class="nav-item" data-view="limpar" style="color:#ef4444;"><i class="bi bi-shield-exclamation" style="color:#ef4444;"></i> Limpar Dados</div>
+    <div class="sidebar-footer">
+      <div class="avatar">M</div>
+      <div class="info"><b>Marcelo</b><br /><small>CHAVEIRO</small></div>
+      <button class="icon-btn" id="themeBtnSide" title="Alternar tema" style="width:34px;height:34px;flex-shrink:0">
+        <i class="bi bi-brightness-high"></i>
+      </button>
+    </div>
+  </aside>
+  <div class="backdrop" id="backdrop"></div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+        <button class="icon-btn menu-toggle" id="menuToggle"><i class="bi bi-list"></i></button>
+        <div style="min-width:0;">
+          <h1 id="pageTitle">Olá, Marcelo!</h1>
+          <p class="sub" id="pageSub">Controle de Ganhos</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="icon-btn" id="themeBtn" title="Alternar tema"><i class="bi bi-brightness-high"></i></button>
+        <div class="avatar" style="cursor:default;">M</div>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- VIEW: DASHBOARD -->
+      <section class="view active" id="view-dashboard">
+        <button class="btn btn-accent btn-cta mb-4" data-novo-ganho><i class="bi bi-plus-circle-fill"></i> Lançar ganho de hoje</button>
+
+        <h2 style="font-size:18px;font-weight:700;margin:0 0 4px;">Resumo</h2>
+        <p style="font-size:12.5px;color:var(--text-muted);margin:0 0 16px;" id="dashSub">Visão geral dos seus ganhos</p>
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-lg-3">
+            <div class="stat d-flex justify-content-between align-items-start gap-2">
+              <div><div class="n" id="stHoje">R$ 0,00</div><div class="l">Hoje</div><div class="s" id="stHojeQt">0 serviços</div></div>
+              <i class="bi bi-sun" style="font-size:22px;color:var(--accent);"></i>
+            </div>
+          </div>
+          <div class="col-6 col-lg-3">
+            <div class="stat d-flex justify-content-between align-items-start gap-2">
+              <div><div class="n" id="stMes">R$ 0,00</div><div class="l">Este mês</div><div class="s" id="stMesQt">0 dias trabalhados</div></div>
+              <i class="bi bi-calendar3" style="font-size:22px;color:var(--accent);"></i>
+            </div>
+          </div>
+          <div class="col-6 col-lg-3">
+            <div class="stat d-flex justify-content-between align-items-start gap-2">
+              <div><div class="n" id="stMedia">R$ 0,00</div><div class="l">Média por dia</div><div class="s">dias trabalhados no mês</div></div>
+              <i class="bi bi-graph-up" style="font-size:22px;color:var(--accent);"></i>
+            </div>
+          </div>
+          <div class="col-6 col-lg-3">
+            <div class="stat d-flex justify-content-between align-items-start gap-2">
+              <div><div class="n" id="stAno">R$ 0,00</div><div class="l">Este ano</div><div class="s" id="stAnoLbl"></div></div>
+              <i class="bi bi-cash-stack" style="font-size:22px;color:var(--accent);"></i>
+            </div>
+          </div>
+        </div>
+
+        <h2 style="font-size:18px;font-weight:700;margin:0 0 4px;">Seus módulos</h2>
+        <p style="font-size:12.5px;color:var(--text-muted);margin:0 0 20px;">Selecione um módulo para acessar</p>
+        <div class="row g-3">
+          <div class="col-md-6 col-lg-4">
+            <div class="system-card" data-view="mensal">
+              <div class="sc-ic"><i class="bi bi-calendar3"></i></div>
+              <h5>Lançamentos do Mês</h5>
+              <p>Veja, edite e filtre os ganhos lançados mês a mês.</p>
+              <div class="go"><span>Ver lançamentos</span><i class="bi bi-arrow-right"></i></div>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-4">
+            <div class="system-card" data-view="anual">
+              <div class="sc-ic"><i class="bi bi-bar-chart"></i></div>
+              <h5>Relatório Anual</h5>
+              <p>Gráfico com o total ganho em cada mês do ano.</p>
+              <div class="go"><span>Ver relatório</span><i class="bi bi-arrow-right"></i></div>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-4">
+            <div class="system-card" data-view="exportar">
+              <div class="sc-ic"><i class="bi bi-file-earmark-arrow-down"></i></div>
+              <h5>Exportar</h5>
+              <p>Faça backup dos dados em um arquivo JSON.</p>
+              <div class="go"><span>Exportar dados</span><i class="bi bi-arrow-right"></i></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: MENSAL -->
+      <section class="view" id="view-mensal">
+        <div class="panel">
+          <div class="period-bar">
+            <div class="period">
+              <button class="icon-btn" id="mesPrev" title="Mês anterior"><i class="bi bi-chevron-left"></i></button>
+              <select class="form-select sel-mes" id="filtMes" aria-label="Mês"></select>
+              <select class="form-select sel-ano" id="filtAnoMes" aria-label="Ano"></select>
+              <button class="icon-btn" id="mesNext" title="Próximo mês"><i class="bi bi-chevron-right"></i></button>
+            </div>
+            <div class="period-actions">
+              <button class="btn btn-ghost" id="mesAtual">Mês atual</button>
+              <button class="btn btn-accent" data-novo-ganho><i class="bi bi-plus-lg"></i> Novo Ganho</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-lg-3"><div class="stat"><div class="n" id="mTotal">R$ 0,00</div><div class="l">Total do mês</div></div></div>
+          <div class="col-6 col-lg-3"><div class="stat"><div class="n" id="mDias">0</div><div class="l">Dias trabalhados</div></div></div>
+          <div class="col-6 col-lg-3"><div class="stat"><div class="n" id="mMedia">R$ 0,00</div><div class="l">Média por dia</div></div></div>
+          <div class="col-6 col-lg-3"><div class="stat"><div class="n" id="mQt">0</div><div class="l">Serviços lançados</div></div></div>
+        </div>
+
+        <div class="panel">
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <h3 class="panel-title mb-0"><i class="bi bi-list-ul"></i> <span id="mTitulo">Lançamentos</span></h3>
+            <span class="badge-soft badge-count" id="mCount">0 lançamentos</span>
+          </div>
+          <div class="table-wrap">
+            <table class="grid fit">
+              <thead><tr><th>Serviço</th><th class="num">Valor</th><th style="width:76px;"></th></tr></thead>
+              <tbody id="mBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: ANUAL -->
+      <section class="view" id="view-anual">
+        <div class="panel">
+          <div class="period">
+            <button class="icon-btn" id="anoPrev" title="Ano anterior"><i class="bi bi-chevron-left"></i></button>
+            <select class="form-select sel-ano" id="filtAno" aria-label="Ano"></select>
+            <button class="icon-btn" id="anoNext" title="Próximo ano"><i class="bi bi-chevron-right"></i></button>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-lg-3"><div class="stat"><div class="n" id="aTotal">R$ 0,00</div><div class="l">Total do ano</div></div></div>
+          <div class="col-6 col-lg-3"><div class="stat"><div class="n" id="aMedia">R$ 0,00</div><div class="l">Média por mês</div><div class="s">meses com ganho</div></div></div>
+          <div class="col-6 col-lg-3"><div class="stat"><div class="n" id="aMelhor">—</div><div class="l">Melhor mês</div><div class="s" id="aMelhorV"></div></div></div>
+          <div class="col-6 col-lg-3"><div class="stat"><div class="n" id="aDias">0</div><div class="l">Dias trabalhados</div></div></div>
+        </div>
+
+        <div class="panel">
+          <h3 class="panel-title"><i class="bi bi-bar-chart"></i> <span id="aTitulo">Ganhos por mês</span></h3>
+          <p class="panel-sub mb-3">Toque em uma barra para ver os detalhes; toque de novo para abrir o mês.</p>
+          <div class="chart-box" id="chartBox">
+            <div class="chart-tip" id="chartTip"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3 class="panel-title mb-3"><i class="bi bi-table"></i> Tabela do ano</h3>
+          <div class="table-wrap">
+            <table class="grid fit">
+              <thead><tr><th>Mês</th><th class="num">Dias</th><th class="num hide-xs">Média/dia</th><th class="num">Total</th></tr></thead>
+              <tbody id="aBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: EXPORTAR -->
+      <section class="view" id="view-exportar">
+        <div class="panel">
+          <h3 class="panel-title"><i class="bi bi-file-earmark-arrow-down"></i> Exportar dados</h3>
+          <p class="panel-sub mb-3">Gera um arquivo JSON com todos os ganhos lançados. Use para fazer backup ou transferir para outro aparelho.</p>
+          <button class="btn btn-accent" id="btnExportar"><i class="bi bi-download"></i> Baixar arquivo JSON</button>
+          <div id="exportInfo" class="a-info mt-3" style="display:none;"></div>
+        </div>
+      </section>
+
+      <!-- VIEW: IMPORTAR -->
+      <section class="view" id="view-importar">
+        <div class="panel">
+          <h3 class="panel-title"><i class="bi bi-file-earmark-arrow-up"></i> Importar dados</h3>
+          <p class="panel-sub mb-2">Selecione um arquivo JSON exportado anteriormente para restaurar os dados.</p>
+          <div class="a-warn mb-3"><i class="bi bi-exclamation-triangle-fill"></i> <strong>Atenção:</strong> a importação <strong>substituirá</strong> todos os dados atuais.</div>
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <input type="file" class="form-control" id="importFile" accept=".json" style="max-width:320px;" />
+            <button class="btn btn-accent" id="btnImportar"><i class="bi bi-upload"></i> Importar</button>
+          </div>
+          <div id="importResult" class="mt-3" style="display:none;"></div>
+        </div>
+      </section>
+
+      <!-- VIEW: LIMPAR DADOS -->
+      <section class="view" id="view-limpar">
+        <div class="panel mb-3">
+          <h3 class="panel-title" style="color:#ef4444;"><i class="bi bi-shield-exclamation" style="color:#ef4444;"></i> Zona de Segurança</h3>
+          <p class="panel-sub">Ações irreversíveis. Os dados apagados <strong>não podem ser recuperados</strong>. Faça um backup antes de prosseguir.</p>
+        </div>
+        <div class="danger-zone">
+          <div class="dz-title"><i class="bi bi-database-slash"></i> Apagar Todos os Ganhos</div>
+          <div class="dz-sub">Remove todos os lançamentos de ganhos. O sistema ficará em estado inicial. Esta ação não pode ser desfeita.</div>
+          <div class="mb-3">
+            <label class="form-label" style="color:var(--text-muted);">Digite <strong style="color:#ef4444;">CONFIRMAR</strong> para habilitar</label>
+            <input type="text" class="form-control" id="confirmTudoInput" placeholder="CONFIRMAR" autocomplete="off" style="max-width:260px;" />
+          </div>
+          <button class="btn-danger-solid" id="btnLimparTudo"><i class="bi bi-database-slash"></i> Apagar tudo</button>
+          <div id="limparTudoResult" class="mt-3" style="display:none;"></div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: GANHO -->
+<div class="modal fade" id="modalGanho" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-cash-coin"></i> <span id="ganhoTitulo">Novo Ganho</span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="formGanho" novalidate>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label" for="gValor">Valor (R$) *</label>
+            <input type="text" inputmode="decimal" class="form-control money-input" id="gValor" placeholder="0,00" autocomplete="off" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="gData">Data *</label>
+            <input type="date" class="form-control" id="gData" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="gDesc">Serviço</label>
+            <input type="text" class="form-control" id="gDesc" list="gDescList" placeholder="Ex.: Cópia de chave, abertura de porta" autocomplete="off" />
+            <datalist id="gDescList"></datalist>
+          </div>
+          <div>
+            <label class="form-label">Forma de pagamento</label>
+            <div class="tipo-toggle">
+              <input type="radio" name="gPag" id="pagDin" value="dinheiro" checked /><label for="pagDin">Dinheiro</label>
+              <input type="radio" name="gPag" id="pagPix" value="pix" /><label for="pagPix">Pix</label>
+              <input type="radio" name="gPag" id="pagCar" value="cartao" /><label for="pagCar">Cartão</label>
+            </div>
+          </div>
+          <div id="ganhoErr" class="a-warn mt-3" style="display:none;"></div>
+          <div id="ganhoOk" class="a-info mt-3" style="display:none;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-ghost" id="btnSalvarNovo"><i class="bi bi-plus-lg"></i> Salvar e lançar outro</button>
+          <button type="submit" class="btn btn-accent"><i class="bi bi-floppy"></i> Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* ─── Storage ─── */
+  const K_GAN = "ch_gan_v1", K_THEME = "ch_theme";
+  const load    = k => { try { return JSON.parse(localStorage.getItem(k)) || []; } catch { return []; } };
+  const persist = (k, v) => {
+    try {
+      localStorage.setItem(k, JSON.stringify(v));
+    } catch (e) {
+      if (e.name === "QuotaExceededError") {
+        alert("⚠️ Armazenamento local cheio.\nNão foi possível salvar os dados.\nAcesse Dados → Exportar para fazer backup.");
+      }
+    }
+  };
+
+  /* Ganho: { id, data:"AAAA-MM-DD", valor:<centavos inteiro>, desc, pag:"dinheiro"|"pix"|"cartao", reg } */
+  let gans = load(K_GAN);
+
+  /* ─── Helpers ─── */
+  const $    = s => document.querySelector(s);
+  const uid  = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const esc  = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const pad  = n => String(n).padStart(2, "0");
+  const isoDate = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  const today   = () => isoDate(new Date());
+  const stampNow = () => {
+    const n = new Date();
+    return n.toLocaleDateString("pt-BR") + " " + n.toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"});
+  };
+  const MESES  = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const MES3   = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  const SEMANA = ["domingo","segunda","terça","quarta","quinta","sexta","sábado"];
+  const PAG    = { dinheiro: "Dinheiro", pix: "Pix", cartao: "Cartão" };
+
+  const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+  const money = cents => brl.format((cents || 0) / 100);
+  /* Valores do eixo: R$ 500, R$ 1,5 mil, R$ 12 mil */
+  const moneyShort = cents => {
+    const v = cents / 100;
+    if (v >= 1000) return "R$ " + (v / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " mil";
+    return "R$ " + Math.round(v).toLocaleString("pt-BR");
+  };
+  /* Aceita "150", "150,5", "1.234,56", "1234.56", "R$ 80" → centavos (ou NaN) */
+  function parseMoney(str) {
+    let s = String(str).replace(/[R$\s]/g, "");
+    if (!s) return NaN;
+    if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".");
+    else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "");
+    if (!/^\d+(\.\d{0,2})?$/.test(s)) return NaN;
+    return Math.round(parseFloat(s) * 100);
+  }
+  const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+
+  /* Agregados de um conjunto de ganhos */
+  function resumo(list) {
+    const total = list.reduce((s, g) => s + g.valor, 0);
+    const dias  = new Set(list.map(g => g.data)).size;
+    return { total, dias, qt: list.length, media: dias ? Math.round(total / dias) : 0 };
+  }
+  const doMes = (ano, mes) => { const p = `${ano}-${pad(mes + 1)}-`; return gans.filter(g => g.data.startsWith(p)); };
+  const doAno = ano => gans.filter(g => g.data.startsWith(ano + "-"));
+
+  /* ─── App Android (Capacitor): mesmo HTML roda no navegador e no APK ─── */
+  const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+
+  const blobToBase64 = blob => new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = () => res(String(r.result).split(",")[1]);
+    r.onerror = rej;
+    r.readAsDataURL(blob);
+  });
+
+  /* Salva em Documentos/ChaveiroMarcelo/<subPath>/ no aparelho e oferece
+     compartilhar. Se a pasta publica falhar (ex.: Android 10 ou anterior sem
+     permissao), grava no cache do app e abre direto o compartilhamento. */
+  async function saveNative(subPath, fileName, blob, title) {
+    const { Filesystem, Share } = window.Capacitor.Plugins;
+    const data = await blobToBase64(blob);
+    const path = `ChaveiroMarcelo/${subPath}/${fileName}`;
+    let uri, saved = true;
+    try {
+      try { await Filesystem.requestPermissions(); } catch (e) { /* Android 11+ nao precisa */ }
+      ({ uri } = await Filesystem.writeFile({ path, data, directory: "DOCUMENTS", recursive: true }));
+    } catch (e) {
+      saved = false;
+      ({ uri } = await Filesystem.writeFile({ path: fileName, data, directory: "CACHE" }));
+    }
+    if (!saved || confirm(`Arquivo salvo em:\nDocumentos/${path}\n\nDeseja compartilhar agora?`)) {
+      try { await Share.share({ title, files: [uri] }); } catch (e) { /* compartilhamento cancelado */ }
+    }
+  }
+
+  /* ─── Navegação ─── */
+  const pageMeta = {
+    dashboard: null,
+    mensal:    ["Lançamentos do Mês", "Ganhos lançados no mês selecionado"],
+    anual:     ["Relatório Anual",    "Total ganho em cada mês do ano"],
+    exportar:  ["Exportar Dados",     "Faça backup de todos os ganhos"],
+    importar:  ["Importar Dados",     "Restaure dados a partir de um arquivo de backup"],
+    limpar:    ["Limpar Dados",       "Zona de segurança — ações irreversíveis"],
+  };
+
+  function saudacao() {
+    const h = new Date().getHours();
+    return (h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite") + ", Marcelo!";
+  }
+
+  function goTo(view) {
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    document.getElementById("view-" + view).classList.add("active");
+    document.querySelectorAll(".nav-item").forEach(n =>
+      n.classList.toggle("active", n.dataset.view === view));
+    const meta = pageMeta[view] || [saudacao(), "Controle de Ganhos"];
+    $("#pageTitle").textContent = meta[0];
+    $("#pageSub").textContent   = meta[1];
+    closeSidebar();
+    window.scrollTo(0, 0);
+    renderView(view);
+    if (view === "limpar") {
+      $("#confirmTudoInput").value = "";
+      $("#btnLimparTudo").classList.remove("enabled");
+      $("#limparTudoResult").style.display = "none";
+    }
+  }
+  const currentView = () => (document.querySelector(".view.active").id || "").replace("view-", "");
+  function renderView(view) {
+    if (view === "dashboard") renderDashboard();
+    if (view === "mensal")    renderMensal();
+    if (view === "anual")     renderAnual();
+  }
+
+  document.querySelectorAll("[data-view]").forEach(el =>
+    el.addEventListener("click", () => goTo(el.dataset.view)));
+
+  /* ─── Sidebar (mobile) ─── */
+  const sidebarEl  = $("#sidebar");
+  const backdropEl = $("#backdrop");
+  const openSidebar  = () => { sidebarEl.classList.add("open");    backdropEl.classList.add("show"); };
+  const closeSidebar = () => { sidebarEl.classList.remove("open"); backdropEl.classList.remove("show"); };
+  $("#menuToggle").addEventListener("click", openSidebar);
+  backdropEl.addEventListener("click", closeSidebar);
+
+  /* ─── Botão voltar do Android: fecha modal/menu, volta ao Dashboard, depois sai ─── */
+  if (isNative) {
+    const { App } = window.Capacitor.Plugins;
+    App.addListener("backButton", () => {
+      const openModal = document.querySelector(".modal.show");
+      if (openModal) { bootstrap.Modal.getInstance(openModal)?.hide(); return; }
+      if (sidebarEl.classList.contains("open")) { closeSidebar(); return; }
+      if (currentView() !== "dashboard") { goTo("dashboard"); return; }
+      App.exitApp();
+    });
+  }
+
+  /* ─── Theme ─── */
+  function applyTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    try { localStorage.setItem(K_THEME, t); } catch (e) { /* sem storage: so a sessao */ }
+    const ic = t === "dark" ? "bi-brightness-high" : "bi-moon-stars";
+    $("#themeBtn").innerHTML     = `<i class="bi ${ic}"></i>`;
+    $("#themeBtnSide").innerHTML = `<i class="bi ${ic}"></i>`;
+  }
+  const toggleTheme = () =>
+    applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
+  $("#themeBtn").addEventListener("click", toggleTheme);
+  $("#themeBtnSide").addEventListener("click", toggleTheme);
+  applyTheme(document.documentElement.getAttribute("data-theme") || "dark");
+
+  /* ══════════════════════════════════
+     DASHBOARD
+  ══════════════════════════════════ */
+  function renderDashboard() {
+    const now = new Date();
+    const hoje = gans.filter(g => g.data === today());
+    const rHoje = resumo(hoje);
+    const rMes  = resumo(doMes(now.getFullYear(), now.getMonth()));
+    const rAno  = resumo(doAno(now.getFullYear()));
+    $("#stHoje").textContent   = money(rHoje.total);
+    $("#stHojeQt").textContent = plural(rHoje.qt, "serviço", "serviços");
+    $("#stMes").textContent    = money(rMes.total);
+    $("#stMesQt").textContent  = plural(rMes.dias, "dia trabalhado", "dias trabalhados");
+    $("#stMedia").textContent  = money(rMes.media);
+    $("#stAno").textContent    = money(rAno.total);
+    $("#stAnoLbl").textContent = String(now.getFullYear());
+    $("#dashSub").textContent  = `${SEMANA[now.getDay()]}, ${now.getDate()} de ${MESES[now.getMonth()].toLowerCase()} de ${now.getFullYear()}`;
+  }
+
+  /* ══════════════════════════════════
+     FILTROS DE PERÍODO
+  ══════════════════════════════════ */
+  const now0 = new Date();
+  let selMes = now0.getMonth(), selAnoMes = now0.getFullYear(), selAno = now0.getFullYear();
+
+  /* Anos disponíveis: do primeiro lançamento (ou atual) até o ano atual + o selecionado */
+  function anosDisponiveis(extra) {
+    const anos = new Set([now0.getFullYear(), extra]);
+    gans.forEach(g => anos.add(+g.data.slice(0, 4)));
+    const min = Math.min(...anos), max = Math.max(...anos);
+    const out = [];
+    for (let a = max; a >= min; a--) out.push(a);
+    return out;
+  }
+  function fillAnoSelect(sel, valor) {
+    sel.innerHTML = anosDisponiveis(valor).map(a => `<option value="${a}">${a}</option>`).join("");
+    sel.value = valor;
+  }
+  $("#filtMes").innerHTML = MESES.map((m, i) => `<option value="${i}">${m}</option>`).join("");
+
+  function setMes(ano, mes) {
+    const d = new Date(ano, mes, 1);
+    selAnoMes = d.getFullYear(); selMes = d.getMonth();
+    renderMensal();
+  }
+  $("#filtMes").addEventListener("change", e => setMes(selAnoMes, +e.target.value));
+  $("#filtAnoMes").addEventListener("change", e => setMes(+e.target.value, selMes));
+  $("#mesPrev").addEventListener("click", () => setMes(selAnoMes, selMes - 1));
+  $("#mesNext").addEventListener("click", () => setMes(selAnoMes, selMes + 1));
+  $("#mesAtual").addEventListener("click", () => setMes(now0.getFullYear(), now0.getMonth()));
+
+  const setAno = ano => { selAno = ano; renderAnual(); };
+  $("#filtAno").addEventListener("change", e => setAno(+e.target.value));
+  $("#anoPrev").addEventListener("click", () => setAno(selAno - 1));
+  $("#anoNext").addEventListener("click", () => setAno(selAno + 1));
+
+  /* ══════════════════════════════════
+     MENSAL
+  ══════════════════════════════════ */
+  function renderMensal() {
+    $("#filtMes").value = selMes;
+    fillAnoSelect($("#filtAnoMes"), selAnoMes);
+
+    const list = doMes(selAnoMes, selMes).sort((a, b) => b.data.localeCompare(a.data) || (b.reg || "").localeCompare(a.reg || ""));
+    const r = resumo(list);
+    $("#mTotal").textContent = money(r.total);
+    $("#mDias").textContent  = r.dias;
+    $("#mMedia").textContent = money(r.media);
+    $("#mQt").textContent    = r.qt;
+    $("#mTitulo").textContent = `${MESES[selMes]} de ${selAnoMes}`;
+    $("#mCount").textContent  = plural(list.length, "lançamento", "lançamentos");
+
+    if (!list.length) {
+      $("#mBody").innerHTML = `<tr><td colspan="3"><div class="empty"><i class="bi bi-inbox"></i>Nenhum ganho lançado em ${MESES[selMes].toLowerCase()}.</div></td></tr>`;
+      return;
+    }
+    /* Agrupa por dia com subtotal */
+    const porDia = new Map();
+    list.forEach(g => { if (!porDia.has(g.data)) porDia.set(g.data, []); porDia.get(g.data).push(g); });
+    let html = "";
+    porDia.forEach((itens, data) => {
+      const [y, m, d] = data.split("-").map(Number);
+      const dt = new Date(y, m - 1, d);
+      const sub = itens.reduce((s, g) => s + g.valor, 0);
+      html += `<tr class="day-row"><td>${pad(d)}/${pad(m)} · ${SEMANA[dt.getDay()]}</td><td class="num">${money(sub)}</td><td></td></tr>`;
+      itens.forEach(g => {
+        html += `<tr>
+          <td>${g.desc ? esc(g.desc) : '<span style="color:var(--text-dim)">Sem descrição</span>'}<span class="svc-pag"><span class="badge-soft badge-pag">${PAG[g.pag] || "—"}</span></span></td>
+          <td class="num" style="font-weight:700;">${money(g.valor)}</td>
+          <td style="white-space:nowrap;text-align:right;">
+            <button class="btn-act edit" data-edit="${g.id}" title="Editar"><i class="bi bi-pencil"></i></button>
+            <button class="btn-act del" data-del="${g.id}" title="Excluir"><i class="bi bi-trash3"></i></button>
+          </td>
+        </tr>`;
+      });
+    });
+    $("#mBody").innerHTML = html;
+  }
+
+  $("#mBody").addEventListener("click", e => {
+    const ed = e.target.closest("[data-edit]");
+    const dl = e.target.closest("[data-del]");
+    if (ed) openModalGanho(ed.dataset.edit);
+    if (dl) {
+      const g = gans.find(x => x.id === dl.dataset.del);
+      if (!g || !confirm(`Excluir o ganho de ${money(g.valor)}?`)) return;
+      gans = gans.filter(x => x.id !== g.id);
+      persist(K_GAN, gans);
+      renderMensal();
+    }
+  });
+
+  /* ══════════════════════════════════
+     ANUAL + GRÁFICO
+  ══════════════════════════════════ */
+  let anualMeses = [];
+
+  function renderAnual() {
+    fillAnoSelect($("#filtAno"), selAno);
+    anualMeses = MESES.map((_, i) => resumo(doMes(selAno, i)));
+    const rAno = resumo(doAno(selAno));
+    const comGanho = anualMeses.filter(m => m.total > 0);
+    let best = -1;
+    anualMeses.forEach((m, i) => { if (m.total > 0 && (best < 0 || m.total > anualMeses[best].total)) best = i; });
+
+    $("#aTotal").textContent   = money(rAno.total);
+    $("#aMedia").textContent   = money(comGanho.length ? Math.round(rAno.total / comGanho.length) : 0);
+    $("#aMelhor").textContent  = best >= 0 ? MESES[best] : "—";
+    $("#aMelhorV").textContent = best >= 0 ? money(anualMeses[best].total) : "";
+    $("#aDias").textContent    = rAno.dias;
+    $("#aTitulo").textContent  = `Ganhos por mês — ${selAno}`;
+
+    $("#aBody").innerHTML = anualMeses.map((m, i) => `
+      <tr class="click-row" data-mes="${i}">
+        <td>${MESES[i]}</td>
+        <td class="num">${m.dias || "—"}</td>
+        <td class="num hide-xs">${m.dias ? money(m.media) : "—"}</td>
+        <td class="num" style="font-weight:700;">${m.total ? money(m.total) : "—"}</td>
+      </tr>`).join("") +
+      `<tr><td style="font-weight:700;">Total</td><td class="num" style="font-weight:700;">${rAno.dias}</td><td class="hide-xs"></td><td class="num" style="font-weight:700;">${money(rAno.total)}</td></tr>`;
+
+    drawChart(best);
+  }
+
+  $("#aBody").addEventListener("click", e => {
+    const tr = e.target.closest("[data-mes]");
+    if (tr) { selAnoMes = selAno; selMes = +tr.dataset.mes; goTo("mensal"); }
+  });
+
+  /* Escala "bonita" para o eixo Y: 1, 2, 2.5, 5 × 10^n */
+  function niceStep(max, ticks) {
+    const raw = max / ticks;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const f = raw / mag;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * mag;
+  }
+
+  function drawChart(best) {
+    const box = $("#chartBox");
+    const tip = $("#chartTip");
+    tip.style.display = "none";
+    box.querySelector("svg")?.remove();
+    box.querySelector(".empty")?.remove();
+
+    if (!anualMeses.some(m => m.total > 0)) {
+      box.insertAdjacentHTML("beforeend", `<div class="empty"><i class="bi bi-bar-chart"></i>Nenhum ganho lançado em ${selAno}.</div>`);
+      return;
+    }
+
+    const W = Math.max(box.clientWidth, 300);
+    const narrow = W < 520;
+    const H = narrow ? 240 : 300;
+    const m = { top: 24, right: 8, bottom: 28, left: narrow ? 52 : 64 };
+    const iw = W - m.left - m.right, ih = H - m.top - m.bottom;
+
+    const max = Math.max(...anualMeses.map(x => x.total));
+    const step = niceStep(max, 4);
+    const top  = Math.ceil(max / step) * step;
+    const y = v => m.top + ih - (v / top) * ih;
+    const slot = iw / 12;
+    const bw = Math.max(Math.min(slot - 2 - (narrow ? 4 : 14), 44), 6);
+    const r = Math.min(4, bw / 2);
+    const cur = now0.getFullYear() === selAno ? now0.getMonth() : -1;
+
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de barras dos ganhos por mês em ${selAno}">`;
+    for (let v = 0; v <= top + 1; v += step) {
+      const yy = Math.round(y(v)) + .5;
+      if (v > 0) s += `<line class="gridline" x1="${m.left}" x2="${W - m.right}" y1="${yy}" y2="${yy}"/>`;
+      s += `<text class="tick" x="${m.left - 8}" y="${yy + 4}" text-anchor="end">${moneyShort(v)}</text>`;
+    }
+    anualMeses.forEach((mm, i) => {
+      const cx = m.left + slot * i + slot / 2;
+      const x0 = cx - bw / 2;
+      s += `<g class="col" data-i="${i}">`;
+      if (mm.total > 0) {
+        const yt = y(mm.total), h = m.top + ih - yt;
+        const rr = Math.min(r, h);
+        /* barra com cantos arredondados só no topo, ancorada na base */
+        s += `<path class="bar" d="M${x0},${m.top + ih} V${yt + rr} Q${x0},${yt} ${x0 + rr},${yt} H${x0 + bw - rr} Q${x0 + bw},${yt} ${x0 + bw},${yt + rr} V${m.top + ih} Z"/>`;
+        if (i === best) {
+          /* rótulo do melhor mês, mantido dentro da área do gráfico (não cobre o eixo Y) */
+          const lbl = moneyShort(mm.total), half = lbl.length * 3.4;
+          const lx = Math.min(Math.max(cx, m.left + half), W - m.right - half);
+          s += `<text class="dlab" x="${lx}" y="${yt - 7}" text-anchor="middle">${lbl}</text>`;
+        }
+      }
+      s += `<text class="xlab${i === cur ? " cur" : ""}" x="${cx}" y="${H - 8}" text-anchor="middle">${W < 420 ? MES3[i][0] : MES3[i]}</text>`;
+      s += `<rect class="hit" x="${m.left + slot * i}" y="${m.top}" width="${slot}" height="${ih + m.bottom}"/>`;
+      s += `</g>`;
+    });
+    s += `<line class="baseline" x1="${m.left}" x2="${W - m.right}" y1="${m.top + ih + .5}" y2="${m.top + ih + .5}"/>`;
+    s += `</svg>`;
+    box.insertAdjacentHTML("afterbegin", s);
+
+    const svg = box.querySelector("svg");
+    let hovered = -1;
+    const show = i => {
+      svg.querySelectorAll(".col").forEach(g => g.classList.toggle("hover", +g.dataset.i === i));
+      hovered = i;
+      const mm = anualMeses[i];
+      tip.innerHTML = `<small>${MESES[i]} ${selAno}</small><b>${money(mm.total)}</b><small>${plural(mm.dias, "dia trabalhado", "dias trabalhados")}${mm.dias ? " · média " + money(mm.media) : ""}</small>`;
+      tip.style.display = "block";
+      const scale = svg.getBoundingClientRect().width / W;
+      const cx = (m.left + slot * i + slot / 2) * scale;
+      const tw = tip.offsetWidth;
+      const left = Math.min(Math.max(cx - tw / 2, 0), box.clientWidth - tw);
+      const barTop = mm.total > 0 ? y(mm.total) : m.top + ih;
+      tip.style.left = left + "px";
+      tip.style.top  = Math.max(barTop * scale - tip.offsetHeight - 10, 0) + "px";
+    };
+    const hide = () => {
+      svg.querySelectorAll(".col").forEach(g => g.classList.remove("hover"));
+      tip.style.display = "none";
+      hovered = -1;
+    };
+    svg.querySelectorAll(".col").forEach(g => {
+      const i = +g.dataset.i;
+      g.addEventListener("pointerenter", e => { if (e.pointerType === "mouse") show(i); });
+      g.addEventListener("click", () => {
+        /* mouse: clique abre o mês; toque: 1º toque mostra detalhe, 2º abre */
+        if (hovered === i) { selAnoMes = selAno; selMes = i; goTo("mensal"); }
+        else show(i);
+      });
+    });
+    svg.addEventListener("pointerleave", e => { if (e.pointerType === "mouse") hide(); });
+  }
+
+  let resizeT;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeT);
+    resizeT = setTimeout(() => { if (currentView() === "anual") drawChart(bestMes()); }, 150);
+  });
+  function bestMes() {
+    let best = -1;
+    anualMeses.forEach((m, i) => { if (m.total > 0 && (best < 0 || m.total > anualMeses[best].total)) best = i; });
+    return best;
+  }
+
+  /* ══════════════════════════════════
+     MODAL GANHO (novo / editar)
+  ══════════════════════════════════ */
+  const modalGanho = new bootstrap.Modal($("#modalGanho"));
+  let editId = null;
+
+  function fillDescList() {
+    const freq = new Map();
+    gans.forEach(g => { if (g.desc) freq.set(g.desc, (freq.get(g.desc) || 0) + 1); });
+    $("#gDescList").innerHTML = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 30)
+      .map(([d]) => `<option value="${esc(d)}"></option>`).join("");
+  }
+
+  function resetForm(keepDate) {
+    $("#gValor").value = "";
+    $("#gDesc").value  = "";
+    if (!keepDate) $("#gData").value = today();
+    $("#pagDin").checked = true;
+    $("#ganhoErr").style.display = "none";
+  }
+
+  function openModalGanho(id) {
+    editId = id || null;
+    resetForm();
+    $("#ganhoOk").style.display = "none";
+    fillDescList();
+    const g = editId && gans.find(x => x.id === editId);
+    $("#ganhoTitulo").textContent = g ? "Editar Ganho" : "Novo Ganho";
+    $("#btnSalvarNovo").style.display = g ? "none" : "";
+    if (g) {
+      $("#gValor").value = (g.valor / 100).toFixed(2).replace(".", ",");
+      $("#gData").value  = g.data;
+      $("#gDesc").value  = g.desc || "";
+      const r = document.querySelector(`input[name="gPag"][value="${g.pag}"]`);
+      if (r) r.checked = true;
+    }
+    modalGanho.show();
+  }
+  $("#modalGanho").addEventListener("shown.bs.modal", () => $("#gValor").focus());
+  document.querySelectorAll("[data-novo-ganho]").forEach(b => b.addEventListener("click", () => openModalGanho()));
+
+  function salvarGanho() {
+    const err = $("#ganhoErr");
+    err.style.display = "none";
+    const valor = parseMoney($("#gValor").value);
+    const data  = $("#gData").value;
+    if (!(valor > 0)) { err.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Informe um valor válido, ex.: 150 ou 150,50.'; err.style.display = "block"; $("#gValor").focus(); return false; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) { err.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Informe a data.'; err.style.display = "block"; return false; }
+    const desc = $("#gDesc").value.trim();
+    const pag  = (document.querySelector('input[name="gPag"]:checked') || {}).value || "dinheiro";
+
+    if (editId) {
+      const g = gans.find(x => x.id === editId);
+      if (g) Object.assign(g, { valor, data, desc, pag });
+    } else {
+      gans.push({ id: uid(), data, valor, desc, pag, reg: stampNow() });
+    }
+    persist(K_GAN, gans);
+    renderView(currentView());
+    return { valor, data };
+  }
+
+  $("#formGanho").addEventListener("submit", e => {
+    e.preventDefault();
+    if (salvarGanho()) modalGanho.hide();
+  });
+  $("#btnSalvarNovo").addEventListener("click", () => {
+    const ok = salvarGanho();
+    if (!ok) return;
+    resetForm(true);
+    fillDescList();
+    const info = $("#ganhoOk");
+    info.innerHTML = `<i class="bi bi-check-circle-fill"></i> ${money(ok.valor)} salvo. Lance o próximo.`;
+    info.style.display = "block";
+    $("#gValor").focus();
+  });
+
+  /* ══════════════════════════════════
+     IMPORTAR / EXPORTAR
+  ══════════════════════════════════ */
+  $("#btnExportar").addEventListener("click", async () => {
+    const payload = { versao: 1, sistema: "chaveiro-ganhos", exportado: new Date().toLocaleString("pt-BR"), ganhos: gans };
+    const blob     = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const fileName = "chaveiro-ganhos-" + today() + ".json";
+    if (isNative) {
+      try {
+        await saveNative("Backups", fileName, blob, "Backup Chaveiro Marcelo");
+      } catch (e) {
+        alert("Não foi possível exportar.\n" + (e.message || e));
+        return;
+      }
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a   = document.createElement("a");
+      a.href     = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+    const info = $("#exportInfo");
+    info.innerHTML = `<i class="bi bi-check-circle"></i> Arquivo exportado com <strong>${gans.length}</strong> lançamento(s).`;
+    info.style.display = "block";
+  });
+
+  /* Seletor do Android nem sempre reconhece .json como application/json */
+  if (isNative) $("#importFile").removeAttribute("accept");
+
+  const ganhoValido = g => g && typeof g.id === "string" && /^\d{4}-\d{2}-\d{2}$/.test(g.data) && Number.isInteger(g.valor) && g.valor > 0;
+
+  $("#btnImportar").addEventListener("click", () => {
+    const file = $("#importFile").files[0];
+    const res  = $("#importResult");
+    res.style.display = "none";
+    if (!file) {
+      res.innerHTML = `<div class="a-warn"><i class="bi bi-exclamation-triangle"></i> Selecione um arquivo JSON antes de importar.</div>`;
+      res.style.display = "block"; return;
+    }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (!Array.isArray(parsed.ganhos) || !parsed.ganhos.every(ganhoValido)) throw new Error("formato inválido");
+        const n = parsed.ganhos.length;
+        if (!confirm(`Importar ${n} lançamento(s)?\n\nATENÇÃO: todos os dados atuais serão substituídos. Esta ação não pode ser desfeita.`)) return;
+        gans = parsed.ganhos;
+        persist(K_GAN, gans);
+        res.innerHTML = `<div class="a-info"><i class="bi bi-check-circle-fill"></i> Importado com sucesso: <strong>${n}</strong> lançamento(s).</div>`;
+        res.style.display = "block";
+        $("#importFile").value = "";
+      } catch {
+        res.innerHTML = `<div class="a-warn"><i class="bi bi-x-circle"></i> Arquivo inválido ou corrompido. Use apenas arquivos exportados por este sistema.</div>`;
+        res.style.display = "block";
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  /* ══════════════════════════════════
+     LIMPAR DADOS
+  ══════════════════════════════════ */
+  $("#confirmTudoInput").addEventListener("input", e => {
+    $("#btnLimparTudo").classList.toggle("enabled", e.target.value.trim().toUpperCase() === "CONFIRMAR");
+  });
+  $("#btnLimparTudo").addEventListener("click", () => {
+    if (!$("#btnLimparTudo").classList.contains("enabled")) return;
+    gans = [];
+    persist(K_GAN, gans);
+    $("#confirmTudoInput").value = "";
+    $("#btnLimparTudo").classList.remove("enabled");
+    const res = $("#limparTudoResult");
+    res.innerHTML = `<div class="a-info"><i class="bi bi-check-circle-fill"></i> Todos os ganhos foram apagados. O sistema está em estado inicial.</div>`;
+    res.style.display = "block";
+  });
+
+  /* ─── Init ─── */
+  goTo("dashboard");
+})();
+</script>
+</body>
+</html>
