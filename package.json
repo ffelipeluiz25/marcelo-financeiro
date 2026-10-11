@@ -1,6 +1,6 @@
 {
   "name": "marcelo-financeiro",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Chaveiro Marcelo - controle de ganhos diarios, mensal e anual; app web offline empacotado como APK Android via Capacitor",
   "scripts": {
