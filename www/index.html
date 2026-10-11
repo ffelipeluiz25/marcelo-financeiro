@@ -7,6 +7,8 @@
   <script>
     (function(){
       try{document.documentElement.setAttribute("data-theme",localStorage.getItem("ch_theme")==="light"?"light":"dark");}catch(e){}
+      /* Bloqueio por digital ligado: esconde o app ate autenticar (so existe no APK) */
+      try{if(localStorage.getItem("ch_bio")==="1"&&window.Capacitor&&window.Capacitor.isNativePlatform())document.documentElement.classList.add("locked");}catch(e){}
     })();
   </script>
   <title>Chaveiro Marcelo</title>
@@ -173,6 +175,17 @@
     .modal-body{padding:22px;}
     .modal-footer{border-top:1px solid var(--border);padding:16px 22px 20px;gap:8px;}
     .modal-backdrop.show{opacity:.6;}
+    /* O <form> envolve corpo e rodapé: precisa repassar o layout em coluna do Bootstrap,
+       senão o corpo não rola e os botões ficam fora da tela */
+    .modal-dialog-scrollable .modal-content > form{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:hidden;}
+    .modal-dialog-scrollable .modal-content > form > .modal-body{overflow-y:auto;-webkit-overflow-scrolling:touch;}
+    @media(max-width:575.98px){
+      .modal-fullscreen-sm-down .modal-content{border-radius:0;border:none;}
+      .modal-fullscreen-sm-down .modal-header{padding:14px 16px 12px;}
+      .modal-fullscreen-sm-down .modal-body{padding:16px;}
+      .modal-fullscreen-sm-down .modal-footer{padding:10px 16px calc(12px + env(safe-area-inset-bottom));flex-wrap:nowrap;}
+      .modal-fullscreen-sm-down .modal-footer .btn{flex:1;white-space:nowrap;padding:12px 10px;margin:0;}
+    }
 
     /* Inline alerts */
     .a-warn{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444;border-radius:9px;padding:10px 14px;font-size:13px;}
@@ -255,6 +268,22 @@
     .val-cell small.you{color:var(--accent);font-weight:700;}
     .pecas-used{display:block;font-size:12px;color:var(--text-dim);margin-top:4px;}
     @media(max-width:576px){ .hide-sm{display:none;} }
+
+    /* Tela de bloqueio (digital) */
+    .lock-screen{display:none;position:fixed;inset:0;z-index:2000;background:var(--bg);align-items:center;justify-content:center;padding:24px;text-align:center;}
+    html.locked .lock-screen{display:flex;}
+    html.locked .app,html.locked .modal,html.locked .modal-backdrop{visibility:hidden!important;}
+    .lock-box{max-width:320px;width:100%;}
+    .lock-box .logo{width:72px;height:72px;border-radius:18px;background:linear-gradient(135deg,var(--accent),#0891b2);display:grid;place-items:center;color:#fff;font-size:34px;margin:0 auto 18px;}
+    .lock-box h2{font-size:21px;font-weight:700;margin:0 0 6px;}
+    .lock-box p{font-size:13.5px;color:var(--text-muted);margin:0 0 26px;}
+    .lock-box .btn-cta i{font-size:22px;}
+    .lock-msg{margin-top:16px;text-align:left;}
+    html:not(.native) .native-only{display:none!important;}
+    .native .web-note{display:none!important;}
+    .form-switch .form-check-input{width:3em;height:1.6em;cursor:pointer;background-color:var(--bg-input);border-color:var(--border);}
+    .form-switch .form-check-input:checked{background-color:var(--accent);border-color:var(--accent);}
+    .form-switch .form-check-label{padding-left:8px;padding-top:3px;font-weight:600;cursor:pointer;}
   </style>
 </head>
 <body>
@@ -374,7 +403,7 @@
             <div class="system-card" data-view="config">
               <div class="sc-ic"><i class="bi bi-gear"></i></div>
               <h5>Configurações</h5>
-              <p>Comissão do patrão e dia de fechamento do mês.</p>
+              <p>Comissão do patrão, dia de fechamento do mês e bloqueio por digital.</p>
               <div class="go"><span>Configurar</span><i class="bi bi-arrow-right"></i></div>
             </div>
           </div>
@@ -511,6 +540,19 @@
           <button type="submit" class="btn btn-accent"><i class="bi bi-floppy"></i> Salvar configurações</button>
           <div id="cfgResult" class="mt-3" style="display:none;"></div>
         </form>
+
+        <div class="panel mt-4">
+          <h3 class="panel-title"><i class="bi bi-fingerprint"></i> Bloqueio por digital</h3>
+          <p class="panel-sub mb-3">Pede a digital (ou o rosto) ao abrir o app e ao voltar depois de 1 minuto fora dele. Se a digital falhar, dá para usar o PIN ou o padrão do celular.</p>
+          <div class="native-only">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="bioSwitch" />
+              <label class="form-check-label" for="bioSwitch">Bloquear o app com digital</label>
+            </div>
+          </div>
+          <p class="hint mb-0 web-note"><i class="bi bi-info-circle"></i> Disponível apenas no aplicativo Android.</p>
+          <div id="bioResult" class="mt-3" style="display:none;"></div>
+        </div>
       </section>
 
       <!-- VIEW: EXPORTAR -->
@@ -559,9 +601,20 @@
   </div>
 </div>
 
+<!-- TELA DE BLOQUEIO -->
+<div class="lock-screen" id="lockScreen" aria-live="polite">
+  <div class="lock-box">
+    <div class="logo"><i class="bi bi-key-fill"></i></div>
+    <h2>Chaveiro Marcelo</h2>
+    <p>App protegido. Use sua digital para entrar.</p>
+    <button class="btn btn-accent btn-cta" id="btnDesbloquear"><i class="bi bi-fingerprint"></i> Desbloquear</button>
+    <div class="lock-msg" id="lockMsg" style="display:none;"></div>
+  </div>
+</div>
+
 <!-- MODAL: SERVIÇO -->
 <div class="modal fade" id="modalGanho" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title"><i class="bi bi-cash-coin"></i> <span id="ganhoTitulo">Novo Serviço</span></h5>
@@ -613,7 +666,7 @@
           <div id="ganhoOk" class="a-info mt-3" style="display:none;"></div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-ghost hide-sm" data-bs-dismiss="modal">Cancelar</button>
           <button type="button" class="btn btn-ghost" id="btnSalvarNovo"><i class="bi bi-plus-lg"></i> Salvar e lançar outro</button>
           <button type="submit" class="btn btn-accent"><i class="bi bi-floppy"></i> Salvar</button>
         </div>
@@ -767,6 +820,82 @@
 
   /* ─── App Android (Capacitor): mesmo HTML roda no navegador e no APK ─── */
   const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  if (isNative) document.documentElement.classList.add("native");
+
+  /* ─── Bloqueio por digital (@capgo/capacitor-native-biometric) ───
+     Liga/desliga em Configurações; o estado fica só neste aparelho (ch_bio, fora do backup).
+     Aceita digital, rosto e o PIN/padrão do celular, para nunca deixar o dono trancado para fora. */
+  const K_BIO = "ch_bio";
+  const BIO_TIPOS = [3, 4, 7];          /* BiometryType: FINGERPRINT, FACE_AUTHENTICATION, DEVICE_CREDENTIAL */
+  const RELOCK_MS = 60 * 1000;          /* volta a pedir a digital depois de 1 minuto fora do app */
+  const bioLigado = () => { try { return localStorage.getItem(K_BIO) === "1"; } catch (e) { return false; } };
+  const setBio = on => { try { on ? localStorage.setItem(K_BIO, "1") : localStorage.removeItem(K_BIO); } catch (e) { /* sem storage */ } };
+  const Bio = () => window.Capacitor.Plugins.NativeBiometric;
+  let autenticando = false, ultimaAuth = 0, saiuEm = 0;
+
+  async function bioDisponivel() {
+    try { return (await Bio().isAvailable({ useFallback: true })).isAvailable; }
+    catch (e) { return false; }
+  }
+  /* Abre o prompt do Android. Resolve true/false; erro descreve o motivo */
+  async function pedirDigital(subtitulo) {
+    autenticando = true;
+    try {
+      await Bio().verifyIdentity({
+        title: "Chaveiro Marcelo",
+        subtitle: subtitulo,
+        reason: subtitulo,
+        allowedBiometryTypes: BIO_TIPOS,
+        maxAttempts: 5,
+      });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, code: e && (e.code ?? e.errorCode), msg: (e && e.message) || "" };
+    } finally {
+      ultimaAuth = Date.now();
+      autenticando = false;
+    }
+  }
+  const lockMsg = (html) => { const m = $("#lockMsg"); m.innerHTML = html; m.style.display = html ? "block" : "none"; };
+
+  function travar() {
+    document.querySelectorAll(".modal.show").forEach(m => bootstrap.Modal.getInstance(m)?.hide());
+    document.documentElement.classList.add("locked");
+    lockMsg("");
+  }
+  async function desbloquear() {
+    if (autenticando) return;
+    if (!(await bioDisponivel())) {
+      /* Celular ficou sem digital e sem bloqueio de tela: não há como verificar; libera e desliga */
+      setBio(false);
+      document.documentElement.classList.remove("locked");
+      alert("Este celular não tem mais digital nem bloqueio de tela cadastrados.\nO bloqueio por digital do app foi desativado.");
+      return;
+    }
+    lockMsg("");
+    const r = await pedirDigital("Use sua digital para entrar");
+    if (r.ok) { document.documentElement.classList.remove("locked"); renderView(currentView()); return; }
+    const bloqueado = r.code == 2 || r.code == 4;
+    lockMsg(`<div class="a-warn"><i class="bi bi-exclamation-triangle"></i> ${bloqueado
+      ? "Muitas tentativas. Aguarde alguns segundos e tente de novo."
+      : "Não foi possível confirmar. Toque em Desbloquear para tentar de novo."}</div>`);
+  }
+  $("#btnDesbloquear").addEventListener("click", desbloquear);
+
+  if (isNative) {
+    const { App } = window.Capacitor.Plugins;
+    /* O prompt da digital, o seletor de arquivo e o compartilhar também pausam o app:
+       ignora pausas causadas pela própria autenticação e só trava após RELOCK_MS fora */
+    App.addListener("appStateChange", ({ isActive }) => {
+      if (!bioLigado() || autenticando || Date.now() - ultimaAuth < 1500) return;
+      if (!isActive) { saiuEm = Date.now(); return; }
+      if (saiuEm && Date.now() - saiuEm > RELOCK_MS && !document.documentElement.classList.contains("locked")) travar();
+      saiuEm = 0;
+      if (document.documentElement.classList.contains("locked")) desbloquear();
+    });
+    if (bioLigado()) desbloquear();
+    else document.documentElement.classList.remove("locked");
+  }
 
   const blobToBase64 = blob => new Promise((res, rej) => {
     const r = new FileReader();
@@ -823,7 +952,7 @@
     closeSidebar();
     window.scrollTo(0, 0);
     renderView(view);
-    if (view === "config") { fillCfgForm(); $("#cfgResult").style.display = "none"; }
+    if (view === "config") { fillCfgForm(); $("#cfgResult").style.display = "none"; $("#bioResult").style.display = "none"; $("#bioSwitch").checked = bioLigado(); }
     if (view === "limpar") {
       $("#confirmTudoInput").value = "";
       $("#btnLimparTudo").classList.remove("enabled");
@@ -853,6 +982,7 @@
   if (isNative) {
     const { App } = window.Capacitor.Plugins;
     App.addListener("backButton", () => {
+      if (document.documentElement.classList.contains("locked")) { App.exitApp(); return; }
       const openModal = document.querySelector(".modal.show");
       if (openModal) { bootstrap.Modal.getInstance(openModal)?.hide(); return; }
       if (sidebarEl.classList.contains("open")) { closeSidebar(); return; }
@@ -1381,6 +1511,26 @@
     $("#cfgPeriodo").innerHTML = `<i class="bi bi-calendar-range"></i> ${txt}`;
   }
   ["input", "change"].forEach(ev => $("#formCfg").addEventListener(ev, renderCfgPreview));
+
+  /* Liga/desliga o bloqueio: pede a digital nas duas direções, para ninguém desligar sem ser o dono */
+  $("#bioSwitch").addEventListener("change", async e => {
+    const sw = e.target, quer = sw.checked;
+    const res = $("#bioResult");
+    const show = html => { res.innerHTML = html; res.style.display = "block"; };
+    sw.checked = !quer;                      /* só muda depois de confirmar */
+    if (!isNative) return;
+    if (quer && !(await bioDisponivel())) {
+      show(`<div class="a-warn"><i class="bi bi-exclamation-triangle"></i> Cadastre uma digital ou um bloqueio de tela (PIN/padrão) nas configurações do Android e tente de novo.</div>`);
+      return;
+    }
+    const r = await pedirDigital(quer ? "Confirme para ativar o bloqueio" : "Confirme para desativar o bloqueio");
+    if (!r.ok) { show(`<div class="a-warn"><i class="bi bi-x-circle"></i> Não confirmado. Nada foi alterado.</div>`); return; }
+    setBio(quer);
+    sw.checked = quer;
+    show(`<div class="a-info"><i class="bi bi-check-circle-fill"></i> ${quer
+      ? "Bloqueio ativado. O app vai pedir a digital ao abrir."
+      : "Bloqueio desativado."}</div>`);
+  });
 
   $("#formCfg").addEventListener("submit", e => {
     e.preventDefault();

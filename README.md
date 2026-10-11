@@ -35,7 +35,7 @@ serviços nos novos períodos.
 | Lançamentos do Mês | Filtro de mês/ano, período de fechamento, demonstrativo do mês (total cobrado e salário = mão de obra − comissão) e lista por dia; editar/excluir |
 | Relatório Anual | Filtro de ano, salário do ano, gráfico de barras do salário de cada mês e tabela do ano |
 | Peças e Materiais | Cadastro de peças com valor (campo com máscara de 2 casas decimais) |
-| Configurações | % da comissão do patrão sobre a mão de obra e dia de fechamento do mês |
+| Configurações | % da comissão do patrão sobre a mão de obra, dia de fechamento do mês e bloqueio por digital |
 | Exportar / Importar | Backup JSON com serviços, peças e configuração (importar substitui tudo) |
 | Limpar Dados | Apaga todos os serviços (mantém peças e configuração; exige digitar `CONFIRMAR`) |
 
@@ -43,6 +43,17 @@ Ao lançar um serviço: escolher a peça + quantidade e tocar em **+**; a prévi
 
 No gráfico: passar o mouse (ou tocar) numa barra mostra salário, serviços, peças, comissão e dias; clicar (ou tocar
 de novo) abre aquele mês. Clicar numa linha da tabela do ano faz o mesmo.
+
+## Bloqueio por digital (só no APK)
+
+Em Configurações → "Bloquear o app com digital". Ligar e desligar pedem a digital, para ninguém além do dono mexer.
+
+- Pede a digital ao abrir o app e ao voltar depois de **1 minuto** fora dele (o próprio prompt da digital, o
+  seletor de arquivos e o compartilhar não contam).
+- Aceita digital, rosto e o **PIN/padrão do celular** como alternativa, então o dono nunca fica trancado para fora.
+- Se o celular ficar sem digital e sem bloqueio de tela, o app libera a entrada e desliga o bloqueio (não há como verificar).
+- Plugin: `@capgo/capacitor-native-biometric`. O estado fica em `ch_bio`, só neste aparelho (não vai no backup).
+- Protege a tela do app; os dados no aparelho não são criptografados.
 
 ## Dados (localStorage)
 
@@ -52,6 +63,7 @@ de novo) abre aquele mês. Clicar numa linha da tabela do ano faz o mesmo.
 | `ch_pec_v1` | Array de peças |
 | `ch_cfg_v1` | `{ "comissao": 50, "corte": 0 }` (`corte` 0 = último dia do mês, 1..30) |
 | `ch_theme` | `"dark"` ou `"light"` |
+| `ch_bio` | `"1"` quando o bloqueio por digital está ligado (não exportado) |
 
 `valor` = mão de obra.
 
