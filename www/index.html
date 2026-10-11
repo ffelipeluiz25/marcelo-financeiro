@@ -234,6 +234,8 @@
     .calc-row.total{background:rgba(20,184,166,.1);font-weight:700;font-size:16px;}
     .calc-row.total .v{color:var(--accent);font-size:20px;}
     .calc-row.neg .v{color:var(--danger);}
+    .calc-head{padding:8px 16px;font-size:11.5px;letter-spacing:.8px;text-transform:uppercase;font-weight:700;color:var(--text-dim);background:var(--bg-input);border-bottom:1px solid var(--border);}
+    .calc.compact .calc-head{padding:6px 12px;}
     .calc.compact .calc-row{padding:8px 12px;font-size:13px;}
     .calc.compact .calc-row.total{font-size:14px;}
     .calc.compact .calc-row.total .v{font-size:17px;}
@@ -424,7 +426,7 @@
           </div>
           <div class="table-wrap">
             <table class="grid fit">
-              <thead><tr><th>Serviço</th><th class="num">Valor</th><th style="width:1%;"></th></tr></thead>
+              <thead><tr><th>Serviço</th><th class="num">Cobrado</th><th style="width:1%;"></th></tr></thead>
               <tbody id="mBody"></tbody>
             </table>
           </div>
@@ -491,20 +493,9 @@
         <form id="formCfg" novalidate>
           <div class="panel">
             <h3 class="panel-title"><i class="bi bi-percent"></i> Comissão do patrão</h3>
-            <p class="panel-sub mb-3">Percentual que o patrão desconta de cada serviço.</p>
-            <div class="row g-3">
-              <div class="col-sm-4">
-                <label class="form-label" for="cfgPct">Percentual (%)</label>
-                <input type="number" class="form-control" id="cfgPct" min="0" max="100" step="0.5" inputmode="decimal" />
-              </div>
-              <div class="col-sm-8">
-                <label class="form-label">Calcular a comissão sobre</label>
-                <div class="tipo-toggle">
-                  <input type="radio" name="cfgBase" id="baseLiq" value="liquido" /><label for="baseLiq">Valor após as peças</label>
-                  <input type="radio" name="cfgBase" id="baseBru" value="bruto" /><label for="baseBru">Valor total</label>
-                </div>
-              </div>
-            </div>
+            <p class="panel-sub mb-3">Percentual que o patrão desconta da mão de obra de cada serviço. As peças vendidas ficam com o patrão e não entram no seu pagamento.</p>
+            <label class="form-label" for="cfgPct">Percentual sobre a mão de obra (%)</label>
+            <input type="number" class="form-control" id="cfgPct" min="0" max="100" step="0.5" inputmode="decimal" style="max-width:160px;" />
             <div class="a-info mt-3" id="cfgExemplo"></div>
             <p class="hint mt-2 mb-0"><i class="bi bi-info-circle"></i> A comissão vale para os próximos lançamentos. Os serviços já lançados mantêm o percentual da época.</p>
           </div>
@@ -579,7 +570,7 @@
       <form id="formGanho" novalidate>
         <div class="modal-body">
           <div class="mb-3">
-            <label class="form-label" for="gValor">Valor cobrado do serviço *</label>
+            <label class="form-label" for="gValor">Mão de obra (valor do serviço) *</label>
             <div class="money-group">
               <span class="pre lg">R$</span>
               <input type="text" inputmode="numeric" class="form-control money-input" id="gValor" placeholder="0,00" autocomplete="off" />
@@ -605,7 +596,7 @@
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label" for="gPecaSel">Peças utilizadas</label>
+            <label class="form-label" for="gPecaSel">Peças / produtos vendidos</label>
             <div id="gPecaBox">
               <div class="peca-add">
                 <select class="form-select" id="gPecaSel"></select>
@@ -681,13 +672,15 @@
 
   /*
     Serviço: { id, data:"AAAA-MM-DD", valor:<centavos>, desc, pag:"dinheiro"|"pix"|"cartao", reg,
-               pecas:[{ id, nome, valor:<centavos>, qt }], pct:<% comissão>, base:"liquido"|"bruto" }
-    pecas/pct/base são cópia do momento do lançamento: mudar o cadastro ou a configuração
+               pecas:[{ id, nome, valor:<centavos>, qt }], pct:<% comissão> }
+    valor = mão de obra. As peças vendidas somam no total cobrado do cliente, mas ficam com o
+    patrão: o funcionário recebe a mão de obra menos a comissão (pct).
+    pecas/pct são cópia do momento do lançamento: mudar o cadastro ou a configuração
     depois não altera serviços já lançados.
     Peça:   { id, nome, valor:<centavos>, criado }
-    Config: { comissao:<%>, base:"liquido"|"bruto", corte:<0 = último dia do mês | 1..30> }
+    Config: { comissao:<%>, corte:<0 = último dia do mês | 1..30> }
   */
-  const CFG_PADRAO = { comissao: 50, base: "liquido", corte: 0 };
+  const CFG_PADRAO = { comissao: 50, corte: 0 };
   let gans = load(K_GAN, []);
   let pecs = load(K_PEC, []);
   let cfg  = Object.assign({}, CFG_PADRAO, load(K_CFG, {}));
@@ -735,16 +728,14 @@
   /* ─── Cálculo de um serviço ─── */
   function calc(g) {
     const pecas = (g.pecas || []).reduce((s, p) => s + p.valor * p.qt, 0);
-    const liq   = g.valor - pecas;
     const pct   = g.pct ?? cfg.comissao;
-    const base  = g.base || cfg.base;
-    const com   = Math.round(Math.max(base === "bruto" ? g.valor : liq, 0) * pct / 100);
-    return { bruto: g.valor, pecas, liq, com, sal: liq - com, pct, base };
+    const com   = Math.round(g.valor * pct / 100);
+    return { mao: g.valor, pecas, total: g.valor + pecas, com, sal: g.valor - com, pct };
   }
   /* Agregados de um conjunto de serviços */
   function resumo(list) {
-    const r = { bruto: 0, pecas: 0, liq: 0, com: 0, sal: 0, qt: list.length, pcts: new Set() };
-    list.forEach(g => { const c = calc(g); r.bruto += c.bruto; r.pecas += c.pecas; r.liq += c.liq; r.com += c.com; r.sal += c.sal; r.pcts.add(c.pct); });
+    const r = { mao: 0, pecas: 0, total: 0, com: 0, sal: 0, qt: list.length, pcts: new Set() };
+    list.forEach(g => { const c = calc(g); r.mao += c.mao; r.pecas += c.pecas; r.total += c.total; r.com += c.com; r.sal += c.sal; r.pcts.add(c.pct); });
     r.dias  = new Set(list.map(g => g.data)).size;
     r.media = r.dias ? Math.round(r.sal / r.dias) : 0;
     return r;
@@ -894,7 +885,7 @@
     const rMes  = resumo(doMes(comp.ano, comp.mes));
     const rAno  = resumo(doAno(comp.ano));
     $("#stHoje").textContent    = money(rHoje.sal);
-    $("#stHojeQt").textContent  = plural(rHoje.qt, "serviço", "serviços") + (rHoje.qt ? " · " + money(rHoje.bruto) + " cobrado" : "");
+    $("#stHojeQt").textContent  = plural(rHoje.qt, "serviço", "serviços") + (rHoje.qt ? " · " + money(rHoje.total) + " cobrado" : "");
     $("#stMes").textContent     = money(rMes.sal);
     $("#stMesLbl").textContent  = `Mês de ${MESES[comp.mes].toLowerCase()}`;
     const p = periodo(comp.ano, comp.mes);
@@ -943,15 +934,20 @@
   $("#anoPrev").addEventListener("click", () => setAno(selAno - 1));
   $("#anoNext").addEventListener("click", () => setAno(selAno + 1));
 
-  /* Demonstrativo: serviços − peças = líquido − comissão = salário */
-  function calcHtml(r, totalLbl) {
+  /* Demonstrativo em dois blocos:
+     cliente:      mão de obra + peças = total cobrado
+     funcionário:  mão de obra − comissão do patrão = você recebe (peças ficam com o patrão) */
+  function calcHtml(r, totalLbl, cobradoLbl) {
     const pctLbl = r.pcts.size === 1 ? ` (${pctFmt([...r.pcts][0])})` : "";
     return `
-      <div class="calc-row"><span>Total dos serviços</span><span class="v">${money(r.bruto)}</span></div>
-      <div class="calc-row minus"><span>(−) Peças utilizadas</span><span class="v">${money(r.pecas)}</span></div>
-      <div class="calc-row sub${r.liq < 0 ? " neg" : ""}"><span>(=) Valor líquido</span><span class="v">${money(r.liq)}</span></div>
+      <div class="calc-head">Serviço</div>
+      <div class="calc-row"><span>Mão de obra</span><span class="v">${money(r.mao)}</span></div>
+      <div class="calc-row"><span>(+) Peças vendidas</span><span class="v">${money(r.pecas)}</span></div>
+      <div class="calc-row sub"><span>${cobradoLbl}</span><span class="v">${money(r.total)}</span></div>
+      <div class="calc-head">Seu pagamento</div>
+      <div class="calc-row"><span>Mão de obra</span><span class="v">${money(r.mao)}</span></div>
       <div class="calc-row minus"><span>(−) Comissão do patrão${pctLbl}</span><span class="v">${money(r.com)}</span></div>
-      <div class="calc-row total${r.sal < 0 ? " neg" : ""}"><span>${totalLbl}</span><span class="v">${money(r.sal)}</span></div>`;
+      <div class="calc-row total"><span>${totalLbl}</span><span class="v">${money(r.sal)}</span></div>`;
   }
 
   /* ══════════════════════════════════
@@ -970,7 +966,7 @@
     $("#mMedia").textContent   = money(r.media);
     $("#mQt").textContent      = r.qt;
     $("#mFechTitulo").textContent = `Fechamento — ${MESES[selMes]}/${selAnoMes}`;
-    $("#mCalc").innerHTML = calcHtml(r, "(=) Salário do mês");
+    $("#mCalc").innerHTML = calcHtml(r, "(=) Salário do mês", "(=) Total cobrado dos clientes");
     $("#mTitulo").textContent = `${MESES[selMes]} de ${selAnoMes}`;
     $("#mCount").textContent  = plural(list.length, "lançamento", "lançamentos");
 
@@ -992,7 +988,7 @@
         const usadas = (g.pecas || []).map(p => `${p.qt}× ${esc(p.nome)}`).join(", ");
         html += `<tr>
           <td>${g.desc ? esc(g.desc) : '<span style="color:var(--text-dim)">Sem descrição</span>'}<span class="svc-pag"><span class="badge-soft badge-pag">${PAG[g.pag] || "—"}</span></span>${usadas ? `<span class="pecas-used"><i class="bi bi-box-seam"></i> ${usadas}</span>` : ""}</td>
-          <td class="num val-cell"><b>${money(c.bruto)}</b>${c.pecas ? `<small>peças −${money(c.pecas)}</small>` : ""}<small>patrão −${money(c.com)}</small><small class="you">você ${money(c.sal)}</small></td>
+          <td class="num val-cell"><b>${money(c.total)}</b>${c.pecas ? `<small>mão de obra ${money(c.mao)}</small><small>peças ${money(c.pecas)}</small>` : ""}<small>patrão −${money(c.com)}</small><small class="you">você ${money(c.sal)}</small></td>
           <td class="act-cell" style="white-space:nowrap;text-align:right;">
             <button class="btn-act edit" data-edit="${g.id}" title="Editar"><i class="bi bi-pencil"></i></button>
             <button class="btn-act del" data-del="${g.id}" title="Excluir"><i class="bi bi-trash3"></i></button>
@@ -1009,7 +1005,7 @@
     if (ed) openModalGanho(ed.dataset.edit);
     if (dl) {
       const g = gans.find(x => x.id === dl.dataset.del);
-      if (!g || !confirm(`Excluir o serviço de ${money(g.valor)}?`)) return;
+      if (!g || !confirm(`Excluir o serviço de ${money(calc(g).total)}?`)) return;
       gans = gans.filter(x => x.id !== g.id);
       persist(K_GAN, gans);
       renderMensal();
@@ -1037,7 +1033,7 @@
     $("#aMedia").textContent    = money(comGanho.length ? Math.round(rAno.sal / comGanho.length) : 0);
     $("#aMelhor").textContent   = best >= 0 ? MESES[best] : "—";
     $("#aMelhorV").textContent  = best >= 0 ? money(anualMeses[best].sal) : "";
-    $("#aBruto").textContent    = money(rAno.bruto);
+    $("#aBruto").textContent    = money(rAno.total);
     $("#aBrutoSub").textContent = `peças ${money(rAno.pecas)} · patrão ${money(rAno.com)}`;
     $("#aTitulo").textContent   = `Salário por mês — ${selAno}`;
 
@@ -1046,13 +1042,13 @@
       <tr class="click-row" data-mes="${i}">
         <td>${MESES[i]}</td>
         <td class="num hide-xs">${m.dias || "—"}</td>
-        <td class="num hide-sm">${dash(m.bruto)}</td>
+        <td class="num hide-sm">${dash(m.total)}</td>
         <td class="num hide-sm">${dash(m.pecas)}</td>
         <td class="num hide-sm">${dash(m.com)}</td>
         <td class="num" style="font-weight:700;">${m.qt ? money(m.sal) : "—"}</td>
       </tr>`).join("") +
       `<tr><td style="font-weight:700;">Total</td><td class="num hide-xs" style="font-weight:700;">${rAno.dias}</td>
-        <td class="num hide-sm" style="font-weight:700;">${money(rAno.bruto)}</td><td class="num hide-sm" style="font-weight:700;">${money(rAno.pecas)}</td>
+        <td class="num hide-sm" style="font-weight:700;">${money(rAno.total)}</td><td class="num hide-sm" style="font-weight:700;">${money(rAno.pecas)}</td>
         <td class="num hide-sm" style="font-weight:700;">${money(rAno.com)}</td><td class="num" style="font-weight:700;color:var(--accent);">${money(rAno.sal)}</td></tr>`;
 
     drawChart(best);
@@ -1078,7 +1074,7 @@
     box.querySelector("svg")?.remove();
     box.querySelector(".empty")?.remove();
 
-    /* Salário negativo (peças maiores que o serviço) aparece como barra zerada; o valor real fica na tabela */
+    /* Salário nunca é negativo (comissão ≤ 100% da mão de obra); max(0) só por segurança */
     const vals = anualMeses.map(x => Math.max(x.sal, 0));
     if (!vals.some(v => v > 0)) {
       box.insertAdjacentHTML("beforeend", `<div class="empty"><i class="bi bi-bar-chart"></i>Nenhum ganho lançado em ${selAno}.</div>`);
@@ -1137,7 +1133,7 @@
       hovered = i;
       const mm = anualMeses[i];
       tip.innerHTML = `<small>${MESES[i]} ${selAno} · salário</small><b>${money(mm.sal)}</b>` +
-        `<small>serviços ${money(mm.bruto)} · peças ${money(mm.pecas)}<br>patrão ${money(mm.com)} · ${plural(mm.dias, "dia", "dias")}</small>`;
+        `<small>cobrado ${money(mm.total)} · peças ${money(mm.pecas)}<br>patrão ${money(mm.com)} · ${plural(mm.dias, "dia", "dias")}</small>`;
       tip.style.display = "block";
       const scale = svg.getBoundingClientRect().width / W;
       const cx = (m.left + slot * i + slot / 2) * scale;
@@ -1239,7 +1235,7 @@
   const modalGanho = new bootstrap.Modal($("#modalGanho"));
   let editId = null;
   let formPecas = [];          /* peças do lançamento em edição: [{ id, nome, valor, qt }] */
-  let formCom = null;          /* { pct, base } do lançamento em edição (null = usa a configuração atual) */
+  let formPct = null;          /* % do lançamento em edição (null = usa a configuração atual) */
   maskMoney($("#gValor"));
 
   function fillDescList() {
@@ -1262,11 +1258,11 @@
     $("#gPecaList").innerHTML = formPecas.map((p, i) => `
       <li><span class="nm">${p.qt}× ${esc(p.nome)}</span><span class="v">${money(p.valor * p.qt)}</span>
         <button type="button" class="btn-act del" data-rm-peca="${i}" title="Remover"><i class="bi bi-x-lg"></i></button></li>`).join("");
-    const com = formCom || { pct: cfg.comissao, base: cfg.base };
-    const c = calc({ valor: getCents($("#gValor")), pecas: formPecas, pct: com.pct, base: com.base });
-    $("#gCalc").innerHTML = calcHtml(Object.assign({}, c, { pcts: new Set([c.pct]) }), "(=) Você recebe");
-    $("#gPctInfo").innerHTML = `<i class="bi bi-info-circle"></i> Comissão de ${pctFmt(com.pct)} sobre o ${com.base === "bruto" ? "valor total" : "valor após as peças"}` +
-      (formCom ? " (percentual da época do lançamento)." : ".");
+    const pct = formPct ?? cfg.comissao;
+    const c = calc({ valor: getCents($("#gValor")), pecas: formPecas, pct });
+    $("#gCalc").innerHTML = calcHtml(Object.assign({}, c, { pcts: new Set([pct]) }), "(=) Você recebe", "(=) Total cobrado do cliente");
+    $("#gPctInfo").innerHTML = `<i class="bi bi-info-circle"></i> Comissão de ${pctFmt(pct)} sobre a mão de obra` +
+      (formPct !== null ? " (percentual da época do lançamento)" : "") + ". As peças ficam com o patrão.";
   }
   $("#gValor").addEventListener("input", renderFormCalc);
   $("#gPecaAdd").addEventListener("click", () => {
@@ -1299,7 +1295,7 @@
   function openModalGanho(id) {
     editId = id || null;
     const g = editId && gans.find(x => x.id === editId);
-    formCom = g ? { pct: g.pct ?? cfg.comissao, base: g.base || cfg.base } : null;
+    formPct = g ? (g.pct ?? cfg.comissao) : null;
     resetForm();
     $("#ganhoOk").style.display = "none";
     fillDescList();
@@ -1325,7 +1321,7 @@
     const valor = getCents($("#gValor"));
     const data  = $("#gData").value;
     const fail = msg => { err.innerHTML = `<i class="bi bi-exclamation-triangle"></i> ${msg}`; err.style.display = "block"; return false; };
-    if (!(valor > 0)) { $("#gValor").focus(); return fail("Informe o valor cobrado do serviço."); }
+    if (!(valor > 0)) { $("#gValor").focus(); return fail("Informe o valor da mão de obra."); }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return fail("Informe a data.");
     const desc  = $("#gDesc").value.trim();
     const pag   = (document.querySelector('input[name="gPag"]:checked') || {}).value || "dinheiro";
@@ -1333,13 +1329,13 @@
 
     if (editId) {
       const g = gans.find(x => x.id === editId);
-      if (g) Object.assign(g, { valor, data, desc, pag, pecas, pct: formCom.pct, base: formCom.base });
+      if (g) { Object.assign(g, { valor, data, desc, pag, pecas, pct: formPct }); delete g.base; }
     } else {
-      gans.push({ id: uid(), data, valor, desc, pag, pecas, pct: cfg.comissao, base: cfg.base, reg: stampNow() });
+      gans.push({ id: uid(), data, valor, desc, pag, pecas, pct: cfg.comissao, reg: stampNow() });
     }
     persist(K_GAN, gans);
     renderView(currentView());
-    return calc({ valor, pecas, pct: editId ? formCom.pct : cfg.comissao, base: editId ? formCom.base : cfg.base });
+    return calc({ valor, pecas, pct: editId ? formPct : cfg.comissao });
   }
 
   $("#formGanho").addEventListener("submit", e => {
@@ -1352,7 +1348,7 @@
     resetForm(true);
     fillDescList();
     const info = $("#ganhoOk");
-    info.innerHTML = `<i class="bi bi-check-circle-fill"></i> Serviço de ${money(ok.bruto)} salvo (você recebe ${money(ok.sal)}). Lance o próximo.`;
+    info.innerHTML = `<i class="bi bi-check-circle-fill"></i> Serviço de ${money(ok.total)} salvo (você recebe ${money(ok.sal)}). Lance o próximo.`;
     info.style.display = "block";
     $("#gValor").focus();
   });
@@ -1365,20 +1361,18 @@
 
   const readCfgForm = () => ({
     comissao: Math.round((parseFloat(String($("#cfgPct").value).replace(",", ".")) || 0) * 100) / 100,
-    base: (document.querySelector('input[name="cfgBase"]:checked') || {}).value || "liquido",
     corte: +$("#cfgCorte").value,
   });
   function fillCfgForm() {
     $("#cfgPct").value = cfg.comissao;
-    (cfg.base === "bruto" ? $("#baseBru") : $("#baseLiq")).checked = true;
     $("#cfgCorte").value = cfg.corte;
     renderCfgPreview();
   }
   /* Exemplo e período mostram o efeito da configuração antes de salvar */
   function renderCfgPreview() {
     const f = readCfgForm();
-    const ex = calc({ valor: 10000, pecas: [{ valor: 2000, qt: 1 }], pct: f.comissao, base: f.base });
-    $("#cfgExemplo").innerHTML = `<i class="bi bi-calculator"></i> Exemplo: serviço de <strong>${money(ex.bruto)}</strong> com <strong>${money(ex.pecas)}</strong> de peças → patrão fica com <strong>${money(ex.com)}</strong>, você recebe <strong>${money(ex.sal)}</strong>.`;
+    const ex = calc({ valor: 10000, pecas: [{ valor: 2000, qt: 1 }], pct: f.comissao });
+    $("#cfgExemplo").innerHTML = `<i class="bi bi-calculator"></i> Exemplo: mão de obra de <strong>${money(ex.mao)}</strong> + <strong>${money(ex.pecas)}</strong> de peças → cliente paga <strong>${money(ex.total)}</strong>; patrão fica com <strong>${money(ex.com)}</strong> de comissão + as peças; você recebe <strong>${money(ex.sal)}</strong>.`;
     const salvo = cfg.corte;
     cfg.corte = f.corte;                      /* calcula o período com o valor do formulário */
     const c = competencia(today());

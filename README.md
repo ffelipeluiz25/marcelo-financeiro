@@ -6,14 +6,14 @@ navegador e também como **APK Android offline**, empacotado com [Capacitor](htt
 
 ## Como o salário é calculado
 
-Para cada serviço lançado:
+O valor digitado no serviço é a **mão de obra**. As peças/produtos vendidos (cadastrados em Peças e Materiais)
+**somam** no total cobrado do cliente, mas ficam com o patrão — não entram no pagamento do funcionário.
 
 ```
-valor cobrado do serviço
-(−) peças utilizadas            (quantidade × valor da peça)
-(=) valor líquido
-(−) comissão do patrão          (% configurado, padrão 50%, sobre o líquido — ou sobre o valor total, se configurado)
-(=) você recebe
+SERVIÇO                                   SEU PAGAMENTO
+mão de obra                               mão de obra
+(+) peças vendidas (qt × valor)           (−) comissão do patrão (% configurado, padrão 50%)
+(=) total cobrado do cliente              (=) você recebe
 ```
 
 O salário do mês é a soma do "você recebe" de todos os serviços do **período de fechamento**:
@@ -22,19 +22,20 @@ O salário do mês é a soma do "você recebe" de todos os serviços do **perío
   Ex.: fechamento dia 25 → "Outubro" = 26/09 a 25/10. Se o mês não tem o dia N (ex.: 30 em fevereiro), fecha no último dia.
 - "Último dia do mês" (padrão) = mês do calendário.
 
-Cada serviço guarda uma **cópia** das peças (nome, valor, quantidade) e do percentual/base da comissão do momento
-do lançamento. Mudar o preço de uma peça ou a comissão depois **não altera** serviços já lançados. Mudar o dia de
-fechamento reagrupa todos os serviços nos novos períodos.
+Cada serviço guarda o **histórico** das peças vendidas (nome, valor, quantidade) e o percentual de comissão do
+momento do lançamento. Ao editar, as peças vendidas são carregadas e podem ser adicionadas/removidas. Mudar o preço de
+uma peça ou a comissão depois **não altera** serviços já lançados. Mudar o dia de fechamento reagrupa todos os
+serviços nos novos períodos.
 
 ## Telas
 
 | Tela | O que faz |
 |---|---|
 | Dashboard | Botão "Lançar serviço de hoje" + resumo do que ele recebe: hoje, mês atual (período de fechamento), média por dia, ano |
-| Lançamentos do Mês | Filtro de mês/ano, período de fechamento, demonstrativo do mês (serviços − peças − comissão = salário) e lista por dia; editar/excluir |
+| Lançamentos do Mês | Filtro de mês/ano, período de fechamento, demonstrativo do mês (total cobrado e salário = mão de obra − comissão) e lista por dia; editar/excluir |
 | Relatório Anual | Filtro de ano, salário do ano, gráfico de barras do salário de cada mês e tabela do ano |
 | Peças e Materiais | Cadastro de peças com valor (campo com máscara de 2 casas decimais) |
-| Configurações | % da comissão do patrão, base da comissão e dia de fechamento do mês |
+| Configurações | % da comissão do patrão sobre a mão de obra e dia de fechamento do mês |
 | Exportar / Importar | Backup JSON com serviços, peças e configuração (importar substitui tudo) |
 | Limpar Dados | Apaga todos os serviços (mantém peças e configuração; exige digitar `CONFIRMAR`) |
 
@@ -49,12 +50,14 @@ de novo) abre aquele mês. Clicar numa linha da tabela do ano faz o mesmo.
 |---|---|
 | `ch_gan_v1` | Array de serviços |
 | `ch_pec_v1` | Array de peças |
-| `ch_cfg_v1` | `{ "comissao": 50, "base": "liquido" \| "bruto", "corte": 0 }` (`corte` 0 = último dia do mês, 1..30) |
+| `ch_cfg_v1` | `{ "comissao": 50, "corte": 0 }` (`corte` 0 = último dia do mês, 1..30) |
 | `ch_theme` | `"dark"` ou `"light"` |
+
+`valor` = mão de obra.
 
 ```json
 { "id": "uid", "data": "2026-10-10", "valor": 15000, "desc": "Troca de fechadura", "pag": "dinheiro|pix|cartao",
-  "pecas": [{ "id": "uid", "nome": "Cilindro", "valor": 2550, "qt": 2 }], "pct": 50, "base": "liquido", "reg": "10/10/2026 14:30" }
+  "pecas": [{ "id": "uid", "nome": "Cilindro", "valor": 2550, "qt": 2 }], "pct": 50, "reg": "10/10/2026 14:30" }
 ```
 
 Valores são guardados em **centavos** (inteiro) para não ter erro de arredondamento. Os campos de valor usam máscara:
